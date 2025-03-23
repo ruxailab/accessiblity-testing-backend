@@ -94,8 +94,9 @@
             <iframe 
               ref="previewFrame" 
               class="preview-frame" 
-              sandbox="allow-same-origin allow-scripts"
+              sandbox="allow-same-origin allow-scripts allow-popups"
               title="Modified webpage preview with accessibility issues highlighted"
+              :srcdoc="report?.modifiedHtml"
             ></iframe>
           </div>
         </div>
@@ -157,36 +158,32 @@ export default {
       this.scrollToIssue(index);
     },
     renderModifiedHtml() {
-      if (!this.report || !this.report.modifiedHtml || !this.$refs.previewFrame) {
+      if (!this.report?.modifiedHtml || !this.$refs.previewFrame) {
         console.warn('Required data or elements not available');
         return;
       }
 
       try {
         const frame = this.$refs.previewFrame;
-        // Wait for iframe to be ready
-        if (!frame.contentWindow || !frame.contentDocument) {
-          console.warn('iframe not ready, retrying...');
-          setTimeout(() => this.renderModifiedHtml(), 100);
-          return;
-        }
-
-        const frameDoc = frame.contentDocument || frame.contentWindow.document;
-        frameDoc.open();
-        frameDoc.write(this.report.modifiedHtml);
-        frameDoc.close();
-
+        
         // Add listener for communication between iframe and parent
-        frame.contentWindow.addEventListener('click', (event) => {
-          const issueMarker = event.target.closest('.a11y-issue-marker');
-          if (issueMarker) {
-            const issueId = issueMarker.getAttribute('data-issue-id');
-            const index = parseInt(issueId.replace('issue-', ''));
-            this.selectIssue(index);
+        frame.addEventListener('load', () => {
+          if (!frame.contentWindow || !frame.contentDocument) {
+            console.warn('iframe not ready');
+            return;
           }
+
+          frame.contentWindow.addEventListener('click', (event) => {
+            const issueMarker = event.target.closest('.a11y-issue-marker');
+            if (issueMarker) {
+              const issueId = issueMarker.getAttribute('data-issue-id');
+              const index = parseInt(issueId.replace('issue-', ''));
+              this.selectIssue(index);
+            }
+          });
         });
       } catch (error) {
-        console.error('Error rendering modified HTML:', error);
+        console.error('Error setting up iframe:', error);
       }
     },
     scrollToIssue(index) {

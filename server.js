@@ -78,6 +78,7 @@ app.post('/api/test', async (req, res) => {
       url,
       dateTime: new Date().toISOString(),
       issues: results.issues,
+      modifiedHtml: modifiedHtml, // Add the modified HTML
       modifiedHtmlPath: `/modified_html/${reportId}.html`,
       screenshotPath: `/modified_html/${reportId}-screenshot.png`
     };
@@ -95,6 +96,7 @@ app.post('/api/test', async (req, res) => {
         warnings: results.issues.filter(issue => issue.type === 'warning').length,
         notices: results.issues.filter(issue => issue.type === 'notice').length
       },
+      modifiedHtml: modifiedHtml, // Add the modified HTML
       modifiedHtmlPath: `/modified_html/${reportId}.html`,
       screenshotPath: `/modified_html/${reportId}-screenshot.png`
     });
@@ -143,6 +145,13 @@ app.get('/api/reports/:id', (req, res) => {
     }
     
     const report = JSON.parse(fs.readFileSync(reportPath));
+    
+    // Read the modified HTML file if it exists
+    const modifiedHtmlPath = path.join(modifiedHtmlDir, `${id}.html`);
+    if (fs.existsSync(modifiedHtmlPath)) {
+      report.modifiedHtml = fs.readFileSync(modifiedHtmlPath, 'utf8');
+    }
+    
     res.json(report);
   } catch (error) {
     console.error('Error fetching report:', error);
