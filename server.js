@@ -1,0 +1,454 @@
+// server.js - Main Express server file
+const express = require('express');
+const cors = require('cors');
+const pa11y = require('pa11y');
+const cheerio = require('cheerio');
+const puppeteer = require('puppeteer');
+const { v4: uuidv4 } = require('uuid');
+const path = require('path');
+const fs = require('fs');
+const axios = require('axios');
+const { URL } = require('url');
+
+const app = express();
+const port = process.env.PORT || 3000;
+
+// Middleware
+app.use(cors());
+app.use(express.json());
+app.use(express.static('public'));
+
+// Store reports temporarily
+const reportsDir = path.join(__dirname, 'reports');
+if (!fs.existsSync(reportsDir)) {
+  fs.mkdirSync(reportsDir);
+}
+
+// Create a directory for modified HTML files
+const modifiedHtmlDir = path.join(__dirname, 'modified_html');
+if (!fs.existsSync(modifiedHtmlDir)) {
+  fs.mkdirSync(modifiedHtmlDir);
+}
+
+// Routes
+app.post('/api/test', async (req, res) => {
+  try {
+    const { url } = req.body;
+    
+    if (!url) {
+      return res.status(400).json({ error: 'URL is required' });
+    }
+    
+    // Run Pa11y test (Pa11y already uses Puppeteer under the hood)
+    const results = await pa11y(url, {
+      standard: 'WCAG2AA',
+      includeNotices: true,
+      includeWarnings: true,
+      timeout: 50000,
+      wait: 1000,
+    });
+    
+    // Fetch the fully rendered HTML content with Puppeteer
+    const { html, stylesheets } = await fetchFullWebpage(url);
+    
+    if (!html) {
+      return res.status(500).json({ error: 'Failed to fetch webpage' });
+    }
+    
+    // Fetch all external CSS
+    const cssContent = await fetchAllCss(stylesheets);
+    
+    // Generate modified HTML with highlights and embedded CSS
+    const modifiedHtml = generateModifiedHtml(html, results.issues, cssContent);
+    
+    // Create a unique report ID
+    const reportId = uuidv4();
+    
+    // Save the modified HTML to a file
+    const modifiedHtmlPath = path.join(modifiedHtmlDir, `${reportId}.html`);
+    fs.writeFileSync(modifiedHtmlPath, modifiedHtml);
+    
+    // Also save a screenshot of the page
+    const screenshotPath = path.join(modifiedHtmlDir, `${reportId}-screenshot.png`);
+    await takeScreenshot(url, screenshotPath);
+    
+    // Save the report
+    const report = {
+      id: reportId,
+      url,
+      dateTime: new Date().toISOString(),
+      issues: results.issues,
+      modifiedHtmlPath: `/modified_html/${reportId}.html`,
+      screenshotPath: `/modified_html/${reportId}-screenshot.png`
+    };
+    
+    fs.writeFileSync(
+      path.join(reportsDir, `${reportId}.json`),
+      JSON.stringify(report)
+    );
+    
+    res.json({ 
+      reportId,
+      summary: {
+        total: results.issues.length,
+        errors: results.issues.filter(issue => issue.type === 'error').length,
+        warnings: results.issues.filter(issue => issue.type === 'warning').length,
+        notices: results.issues.filter(issue => issue.type === 'notice').length
+      },
+      modifiedHtmlPath: `/modified_html/${reportId}.html`,
+      screenshotPath: `/modified_html/${reportId}-screenshot.png`
+    });
+  } catch (error) {
+    console.error('Error running accessibility test:', error);
+    res.status(500).json({ error: 'Failed to run accessibility test', details: error.message });
+  }
+});
+
+app.get('/api/reports', (req, res) => {
+  try {
+    const files = fs.readdirSync(reportsDir);
+    const reports = files
+      .filter(file => file.endsWith('.json'))
+      .map(file => {
+        const data = JSON.parse(fs.readFileSync(path.join(reportsDir, file)));
+        return {
+          id: data.id,
+          url: data.url,
+          dateTime: data.dateTime,
+          summary: {
+            total: data.issues.length,
+            errors: data.issues.filter(issue => issue.type === 'error').length,
+            warnings: data.issues.filter(issue => issue.type === 'warning').length,
+            notices: data.issues.filter(issue => issue.type === 'notice').length
+          },
+          modifiedHtmlPath: data.modifiedHtmlPath,
+          screenshotPath: data.screenshotPath
+        };
+      });
+    
+    res.json(reports);
+  } catch (error) {
+    console.error('Error fetching reports:', error);
+    res.status(500).json({ error: 'Failed to fetch reports' });
+  }
+});
+
+app.get('/api/reports/:id', (req, res) => {
+  try {
+    const { id } = req.params;
+    const reportPath = path.join(reportsDir, `${id}.json`);
+    
+    if (!fs.existsSync(reportPath)) {
+      return res.status(404).json({ error: 'Report not found' });
+    }
+    
+    const report = JSON.parse(fs.readFileSync(reportPath));
+    res.json(report);
+  } catch (error) {
+    console.error('Error fetching report:', error);
+    res.status(500).json({ error: 'Failed to fetch report' });
+  }
+});
+
+// Serve modified HTML files
+app.use('/modified_html', express.static(modifiedHtmlDir));
+
+// Helper Functions
+
+// Fetch fully rendered webpage content with Puppeteer
+async function fetchFullWebpage(url) {
+  let browser = null;
+  try {
+    browser = await puppeteer.launch({
+      headless: 'new',
+      args: ['--no-sandbox', '--disable-setuid-sandbox']
+    });
+    
+    const page = await browser.newPage();
+    
+    // Set viewport size to desktop
+    await page.setViewport({
+      width: 1366,
+      height: 768
+    });
+    
+    // Set user agent
+    await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36');
+    
+    // Navigate to URL with timeout
+    await page.goto(url, {
+      waitUntil: 'networkidle2',
+      timeout: 30000
+    });
+    
+    // Use page.evaluate to wait instead
+    await page.evaluate(() => new Promise(resolve => setTimeout(resolve, 2000)));
+    
+    // Get all stylesheet URLs
+    const stylesheets = await page.evaluate(() => {
+      const links = Array.from(document.querySelectorAll('link[rel="stylesheet"]'));
+      return links.map(link => link.href);
+    });
+    
+    // Get inline styles
+    const inlineStyles = await page.evaluate(() => {
+      const styles = Array.from(document.querySelectorAll('style'));
+      return styles.map(style => style.textContent);
+    });
+    
+    // Get the final HTML content after JS execution
+    const html = await page.content();
+    
+    await browser.close();
+    browser = null;
+    
+    return {
+      html,
+      stylesheets,
+      inlineStyles
+    };
+  } catch (error) {
+    console.error(`Error fetching webpage with Puppeteer: ${error.message}`);
+    if (browser) await browser.close();
+    return { html: null, stylesheets: [], inlineStyles: [] };
+  }
+}
+
+// Take a screenshot of the webpage
+async function takeScreenshot(url, screenshotPath) {
+  let browser = null;
+  try {
+    browser = await puppeteer.launch({
+      headless: 'new',
+      args: ['--no-sandbox', '--disable-setuid-sandbox']
+    });
+    
+    const page = await browser.newPage();
+    await page.setViewport({ width: 1366, height: 768 });
+    await page.goto(url, { waitUntil: 'networkidle2', timeout: 30000 });
+    
+    // Use page.evaluate instead of waitForTimeout
+    await page.evaluate(() => new Promise(resolve => setTimeout(resolve, 1000)));
+    
+    // Take screenshot
+    await page.screenshot({ path: screenshotPath, fullPage: true });
+    
+    await browser.close();
+    browser = null;
+    
+    return true;
+  } catch (error) {
+    console.error(`Error taking screenshot: ${error.message}`);
+    if (browser) await browser.close();
+    return false;
+  }
+}
+
+// Fetch all CSS content
+async function fetchAllCss(stylesheetUrls) {
+  const cssContent = {};
+  
+  for (const url of stylesheetUrls) {
+    try {
+      const response = await axios.get(url);
+      cssContent[url] = response.data;
+    } catch (error) {
+      console.error(`Error fetching CSS from ${url}: ${error.message}`);
+    }
+  }
+  
+  return cssContent;
+}
+
+// Function to generate modified HTML with highlights and embedded CSS
+function generateModifiedHtml(html, issues, cssContent) {
+  const $ = cheerio.load(html);
+  
+  // Add issue highlights
+  issues.forEach((issue, index) => {
+    if (issue.selector) {
+      try {
+        const element = $(issue.selector);
+        if (element.length > 0) {
+          const issueId = `issue-${index}`;
+          
+          // Add a class and data attributes
+          element.addClass('a11y-issue');
+          element.attr('data-issue-id', issueId);
+          element.attr('data-issue-type', issue.type);
+          element.attr('data-issue-code', issue.code);
+          element.attr('data-issue-message', issue.message);
+          
+          // Add a style to highlight the element with a dotted border
+          element.css({
+            'border': issue.type === 'error' ? '2px dotted red' : 
+                      issue.type === 'warning' ? '2px dotted orange' : '2px dotted blue',
+            'position': 'relative'
+          });
+          
+          // Add an overlay with issue number
+          const overlay = $(`<div class="a11y-issue-marker" data-issue-id="${issueId}">${index + 1}</div>`);
+          element.append(overlay);
+        } else {
+          console.warn(`Element not found for selector: ${issue.selector}`);
+        }
+      } catch (error) {
+        console.error(`Error highlighting element ${issue.selector}:`, error);
+      }
+    }
+  });
+  
+  // Create a head tag if it doesn't exist
+  if (!$('head').length) {
+    if ($('html').length) {
+      $('html').prepend('<head></head>');
+    } else {
+      $('body').before('<head></head>');
+    }
+  }
+  
+  // Add all CSS content as a single style tag
+  let allCss = '\n/* Combined CSS */\n';
+  for (const [url, content] of Object.entries(cssContent)) {
+    allCss += `\n/* From: ${url} */\n${content}\n`;
+  }
+  
+  // Add custom CSS for the overlays
+  allCss += `
+    /* Accessibility issue highlighting styles */
+    .a11y-issue-marker {
+      position: absolute;
+      top: -5px;
+      right: -5px;
+      background-color: red;
+      color: white;
+      border-radius: 50%;
+      width: 20px;
+      height: 20px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      font-size: 12px;
+      z-index: 9999;
+      cursor: pointer;
+    }
+    .a11y-issue[data-issue-type="warning"] .a11y-issue-marker {
+      background-color: orange;
+    }
+    .a11y-issue[data-issue-type="notice"] .a11y-issue-marker {
+      background-color: blue;
+    }
+    
+    /* Tooltip styles for issue details */
+    .a11y-issue:hover::after {
+      content: attr(data-issue-message);
+      position: absolute;
+      top: 20px;
+      left: 0;
+      background: rgba(0, 0, 0, 0.8);
+      color: white;
+      padding: 5px 10px;
+      border-radius: 3px;
+      font-size: 14px;
+      z-index: 10000;
+      max-width: 300px;
+      white-space: normal;
+    }
+    
+    /* Add a fixed issues panel */
+    #a11y-issues-panel {
+      position: fixed;
+      bottom: 0;
+      right: 0;
+      width: 300px;
+      max-height: 300px;
+      overflow-y: auto;
+      background: rgba(0, 0, 0, 0.8);
+      color: white;
+      padding: 10px;
+      z-index: 10001;
+      font-family: Arial, sans-serif;
+      font-size: 14px;
+    }
+    #a11y-issues-panel h2 {
+      margin-top: 0;
+      font-size: 16px;
+    }
+    .a11y-panel-issue {
+      margin-bottom: 10px;
+      padding-bottom: 10px;
+      border-bottom: 1px solid #444;
+    }
+    .a11y-panel-issue-error {
+      color: #ff6b6b;
+    }
+    .a11y-panel-issue-warning {
+      color: #ffa94d;
+    }
+    .a11y-panel-issue-notice {
+      color: #74c0fc;
+    }
+  `;
+  
+  $('head').append(`<style>${allCss}</style>`);
+  
+  // Create a panel to show all issues
+  const issuesPanel = $('<div id="a11y-issues-panel"></div>');
+  issuesPanel.append('<h2>Accessibility Issues</h2>');
+  
+  issues.forEach((issue, index) => {
+    const issueElement = $(`<div class="a11y-panel-issue a11y-panel-issue-${issue.type}"></div>`);
+    issueElement.append(`<strong>${index + 1}. ${issue.type.toUpperCase()}:</strong> ${issue.message}`);
+    issueElement.append(`<br><small>Code: ${issue.code}</small>`);
+    if (issue.selector) {
+      issueElement.append(`<br><small>Selector: ${issue.selector}</small>`);
+    }
+    issuesPanel.append(issueElement);
+  });
+  
+  $('body').append(issuesPanel);
+  
+  // Add a script to make the issues interactive
+  $('body').append(`
+    <script>
+      document.addEventListener('DOMContentLoaded', function() {
+        const issues = document.querySelectorAll('.a11y-issue');
+        issues.forEach(issue => {
+          issue.addEventListener('click', function() {
+            const message = this.getAttribute('data-issue-message');
+            const code = this.getAttribute('data-issue-code');
+            const type = this.getAttribute('data-issue-type');
+            
+            alert('Accessibility Issue:\\nType: ' + type.toUpperCase() + 
+                  '\\nMessage: ' + message + 
+                  '\\nCode: ' + code);
+          });
+        });
+        
+        // Toggle issues panel
+        const panel = document.getElementById('a11y-issues-panel');
+        const toggleButton = document.createElement('button');
+        toggleButton.textContent = 'Toggle Issues Panel';
+        toggleButton.style.position = 'fixed';
+        toggleButton.style.top = '10px';
+        toggleButton.style.right = '10px';
+        toggleButton.style.zIndex = '10001';
+        toggleButton.style.padding = '5px 10px';
+        
+        toggleButton.addEventListener('click', function() {
+          panel.style.display = panel.style.display === 'none' ? 'block' : 'none';
+        });
+        
+        document.body.appendChild(toggleButton);
+      });
+    </script>
+  `);
+  
+  return $.html();
+}
+
+// Start server
+app.listen(port, () => {
+  console.log(`Accessibility testing server running on port ${port}`);
+  console.log(`Modified HTML files available at: http://localhost:${port}/modified_html/`);
+});
