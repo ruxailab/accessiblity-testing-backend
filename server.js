@@ -181,7 +181,7 @@ async function fetchFullWebpage(url) {
       timeout: 30000
     });
     
-    // Use page.evaluate to wait instead
+    // Use evaluate for waiting instead of waitForTimeout
     await page.evaluate(() => new Promise(resolve => setTimeout(resolve, 2000)));
     
     // Get all stylesheet URLs
@@ -227,7 +227,7 @@ async function takeScreenshot(url, screenshotPath) {
     await page.setViewport({ width: 1366, height: 768 });
     await page.goto(url, { waitUntil: 'networkidle2', timeout: 30000 });
     
-    // Use page.evaluate instead of waitForTimeout
+    // Use evaluate for waiting instead of waitForTimeout
     await page.evaluate(() => new Promise(resolve => setTimeout(resolve, 1000)));
     
     // Take screenshot
@@ -354,61 +354,11 @@ function generateModifiedHtml(html, issues, cssContent) {
       max-width: 300px;
       white-space: normal;
     }
-    
-    /* Add a fixed issues panel */
-    #a11y-issues-panel {
-      position: fixed;
-      bottom: 0;
-      right: 0;
-      width: 300px;
-      max-height: 300px;
-      overflow-y: auto;
-      background: rgba(0, 0, 0, 0.8);
-      color: white;
-      padding: 10px;
-      z-index: 10001;
-      font-family: Arial, sans-serif;
-      font-size: 14px;
-    }
-    #a11y-issues-panel h2 {
-      margin-top: 0;
-      font-size: 16px;
-    }
-    .a11y-panel-issue {
-      margin-bottom: 10px;
-      padding-bottom: 10px;
-      border-bottom: 1px solid #444;
-    }
-    .a11y-panel-issue-error {
-      color: #ff6b6b;
-    }
-    .a11y-panel-issue-warning {
-      color: #ffa94d;
-    }
-    .a11y-panel-issue-notice {
-      color: #74c0fc;
-    }
   `;
   
   $('head').append(`<style>${allCss}</style>`);
   
-  // Create a panel to show all issues
-  const issuesPanel = $('<div id="a11y-issues-panel"></div>');
-  issuesPanel.append('<h2>Accessibility Issues</h2>');
-  
-  issues.forEach((issue, index) => {
-    const issueElement = $(`<div class="a11y-panel-issue a11y-panel-issue-${issue.type}"></div>`);
-    issueElement.append(`<strong>${index + 1}. ${issue.type.toUpperCase()}:</strong> ${issue.message}`);
-    issueElement.append(`<br><small>Code: ${issue.code}</small>`);
-    if (issue.selector) {
-      issueElement.append(`<br><small>Selector: ${issue.selector}</small>`);
-    }
-    issuesPanel.append(issueElement);
-  });
-  
-  $('body').append(issuesPanel);
-  
-  // Add a script to make the issues interactive
+  // Add a script to make the issue markers interactive
   $('body').append(`
     <script>
       document.addEventListener('DOMContentLoaded', function() {
@@ -424,22 +374,6 @@ function generateModifiedHtml(html, issues, cssContent) {
                   '\\nCode: ' + code);
           });
         });
-        
-        // Toggle issues panel
-        const panel = document.getElementById('a11y-issues-panel');
-        const toggleButton = document.createElement('button');
-        toggleButton.textContent = 'Toggle Issues Panel';
-        toggleButton.style.position = 'fixed';
-        toggleButton.style.top = '10px';
-        toggleButton.style.right = '10px';
-        toggleButton.style.zIndex = '10001';
-        toggleButton.style.padding = '5px 10px';
-        
-        toggleButton.addEventListener('click', function() {
-          panel.style.display = panel.style.display === 'none' ? 'block' : 'none';
-        });
-        
-        document.body.appendChild(toggleButton);
       });
     </script>
   `);
