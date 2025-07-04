@@ -1,15 +1,5 @@
 <template>
-  <div id="app">
-    <nav class="navbar">
-      <div class="container">
-        <h1 class="navbar-brand">Web Accessibility Checker</h1>
-        <div class="nav-links">
-          <router-link to="/">Home</router-link>
-          <router-link to="/reports">Reports</router-link>
-        </div>
-      </div>
-    </nav>
-    
+  <div id="app">  
     <div class="container">
       <router-view />
     </div>

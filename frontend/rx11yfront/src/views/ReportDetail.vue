@@ -1,4 +1,4 @@
-// src/views/ReportDetail.vue
+
 <template>
   <div class="report-detail">
     <div v-if="isLoading" class="loading">
