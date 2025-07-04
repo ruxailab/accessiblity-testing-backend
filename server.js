@@ -1,5 +1,5 @@
 // express js server file to llm to get context of how the ackend works
-
+//pusing 
 // server.js - Main Express server file
 const express = require('express');
 const cors = require('cors');
@@ -92,8 +92,7 @@ app.post('/api/test', async (req, res) => {
             wait: 1000,
         });
         const testDuration = ((Date.now() - startTime) / 1000).toFixed(2);
-        console.log(`[2/5] Accessibility tests completed in ${testDuration} seconds`);
-        console.log(`[2/5] Found ${results.issues.length} accessibility issues`);
+   
 
         // Fetch the fully rendered HTML content with Puppeteer
         const { html, stylesheets } = await fetchFullWebpage(url);
