@@ -58,27 +58,6 @@ exports.runAccessibilityTest = async (req, res) => {
         });
         console.log(`[runAccessibilityTest] Pa11y test completed. Issues found: ${results.issues.length}`);
 
-        // (Optional) Generate and save a static HTML accessibility report (can be removed if not needed)
-        console.log('[runAccessibilityTest] Generating HTML accessibility report (local, optional)...');
-        const htmlpage = await htmlReporter.results(results);
-        fs.writeFileSync('accessibility-report.html', htmlpage);
-
-        // Fetch the fully rendered HTML and stylesheets using Puppeteer
-        // console.log('[runAccessibilityTest] Fetching fully rendered HTML and stylesheets...');
-        // const { html, stylesheets } = await fetchFullWebpage(url);
-        // if (!html) {
-        //     console.error('[runAccessibilityTest] Failed to fetch webpage HTML');
-        //     return res.status(500).json({ error: 'Failed to fetch webpage' });
-        // }
-
-        // // Download all external CSS referenced by the page
-        // console.log('[runAccessibilityTest] Fetching all external CSS...');
-        // const cssContent = await fetchAllCss(stylesheets);
-
-        // // Generate modified HTML with accessibility highlights
-        // console.log('[runAccessibilityTest] Generating modified HTML with highlights...');
-        // const modifiedHtml = generateModifiedHtml(html, results.issues, cssContent);
-
         
         // Prepare the report object for Firestore
         const firebaseReport = {
@@ -203,7 +182,7 @@ exports.generateModifiedHtmlForTest = async (req, res) => {
         await db.collection('report').doc(doc.id).update({
             ReportModifiedHtml: modifiedHtml
         });
-        
+
         console.log(`[generateModifiedHtmlForTest] Updated Firestore document for testId: ${testId}`);
         res.json({
             success: true,
