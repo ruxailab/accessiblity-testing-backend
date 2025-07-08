@@ -36,10 +36,19 @@ exports.testFirestore = async (req, res) => {
 };
 
 exports.runAccessibilityTest = async (req, res) => {
-    console.log("Test Started")
+    // Start of accessibility test endpoint
+    console.log("[runAccessibilityTest] Test Started");
     try {
+        // Extract URL and testId from request body
         const { url, testId } = req.body;
-        if (!url) return res.status(400).json({ error: 'URL is required' });
+        console.log(`[runAccessibilityTest] Received request for URL: ${url}, testId: ${testId}`);
+        if (!url) {
+            console.error('[runAccessibilityTest] No URL provided');
+            return res.status(400).json({ error: 'URL is required' });
+        }
+
+        // Run Pa11y accessibility test on the provided URL
+        console.log('[runAccessibilityTest] Running Pa11y accessibility test...');
         const results = await pa11y(url, {
             standard: 'WCAG2AA',
             includeNotices: true,
@@ -47,24 +56,34 @@ exports.runAccessibilityTest = async (req, res) => {
             timeout: 50000,
             wait: 1000,
         });
+        console.log(`[runAccessibilityTest] Pa11y test completed. Issues found: ${results.issues.length}`);
+
+        // (Optional) Generate and save a static HTML accessibility report (can be removed if not needed)
+        console.log('[runAccessibilityTest] Generating HTML accessibility report (local, optional)...');
+        const htmlpage = await htmlReporter.results(results);
+        fs.writeFileSync('accessibility-report.html', htmlpage);
+
+        // Fetch the fully rendered HTML and stylesheets using Puppeteer
+        console.log('[runAccessibilityTest] Fetching fully rendered HTML and stylesheets...');
         const { html, stylesheets } = await fetchFullWebpage(url);
-        if (!html) return res.status(500).json({ error: 'Failed to fetch webpage' });
+        if (!html) {
+            console.error('[runAccessibilityTest] Failed to fetch webpage HTML');
+            return res.status(500).json({ error: 'Failed to fetch webpage' });
+        }
+
+        // Download all external CSS referenced by the page
+        console.log('[runAccessibilityTest] Fetching all external CSS...');
         const cssContent = await fetchAllCss(stylesheets);
+
+        // Generate modified HTML with accessibility highlights
+        console.log('[runAccessibilityTest] Generating modified HTML with highlights...');
         const modifiedHtml = generateModifiedHtml(html, results.issues, cssContent);
+
+        // Generate a unique report ID
         const reportId = uuidv4();
-        // fs.writeFileSync(path.join(reportsDir, `${reportId}.json`), JSON.stringify(report));
-        // const modifiedHtmlPath = path.join(modifiedHtmlDir, `${reportId}.html`);
-        // const screenshotPath = path.join(modifiedHtmlDir, `${reportId}-screenshot.png`);
-        // await takeScreenshot(url, screenshotPath);
-        // const report = {
-        //     id: reportId,
-        //     url,
-        //     dateTime: new Date().toISOString(),
-        //     issues: results.issues,
-        //     modifiedHtml: modifiedHtml,
-        //     documentTitle: results.documentTitle,
-        //     pageUrl: results.pageUrl,
-        // };
+        console.log(`[runAccessibilityTest] Generated reportId: ${reportId}`);
+
+        // Prepare the report object for Firestore
         const firebaseReport = {
             ReportId: testId,
             ReportUrl: url,
@@ -74,10 +93,17 @@ exports.runAccessibilityTest = async (req, res) => {
             ReportModifiedHtml: modifiedHtml,
             DocumentTitle: results.documentTitle
         };
+
+        // Save the report to Firestore
+        console.log('[runAccessibilityTest] Saving report to Firestore...');
         const reportRef = db.collection('report');
         await reportRef.add(firebaseReport);
+        console.log('[runAccessibilityTest] Report saved to Firestore.');
+
+        // Respond with summary and modified HTML (not saved locally)
+        console.log('[runAccessibilityTest] Sending response to client.');
         res.json({
-            reportId,
+            testId,
             summary: {
                 total: results.issues.length,
                 errors: results.issues.filter(issue => issue.type === 'error').length,
@@ -89,6 +115,8 @@ exports.runAccessibilityTest = async (req, res) => {
             screenshotPath: `/modified_html/${reportId}-screenshot.png`
         });
     } catch (error) {
+        // Handle errors and send error response
+        console.error('[runAccessibilityTest] Error:', error.message);
         res.status(500).json({
             error: 'Failed to run accessibility test',
             details: error.message
