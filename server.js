@@ -1,4 +1,4 @@
-// express js server file to llm to get context of how the ackend works
+// express js server file to llm to get context of how the backend works
 //pusing 
 // server.js - Main Express server file
 const express = require('express');
