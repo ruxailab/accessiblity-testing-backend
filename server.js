@@ -4,12 +4,12 @@
 const express = require('express');
 const cors = require('cors');
 const admin = require('firebase-admin');
-// const serviceAccount = require('./servicekey.json');
+const serviceAccount = require('/secrets/servicekey.json');
 
 // Initialize Firebase Admin
 admin.initializeApp({
-    // credential: admin.credential.cert(serviceAccount)
-    credential: admin.credential.cert.applicationDefault(),
+    credential: admin.credential.cert(serviceAccount)
+    // credential: admin.credential.cert.applicationDefault(),
 });
 
 const app = express();
@@ -31,5 +31,5 @@ app.use('/api', reportRoutes);
 
 // Start server
 app.listen(port, () => {
-    console.log(`Accessibility testing server running on port ${port}`);
+    console.log(`Accessibility testing server running `);
 });
