@@ -4,13 +4,20 @@
 const express = require('express');
 const cors = require('cors');
 const admin = require('firebase-admin');
-const serviceAccount = require('/secrets/servicekey.json');
+let firebaseConfig;
 
-// Initialize Firebase Admin
-admin.initializeApp({
-    credential: admin.credential.cert(serviceAccount)
-    // credential: admin.credential.cert.applicationDefault(),
-});
+if (process.env.GOOGLE_APPLICATION_CREDENTIALS) {
+    // Running in GCP or with env var set: use application default
+    admin.initializeApp({
+        credential: admin.credential.applicationDefault(),
+    });
+} else {
+    // Running locally: use service account key
+    const serviceAccount = require('./servicekey.json');
+    admin.initializeApp({
+        credential: admin.credential.cert(serviceAccount),
+    });
+}
 
 const app = express();
 const port = process.env.PORT || 5000;
