@@ -27,10 +27,6 @@ app.use(cors());
 app.use(express.json());
 app.use(express.static('public'));
 
-// Serve modified HTML files
-const path = require('path');
-const modifiedHtmlDir = path.join(__dirname, 'modified_html');
-app.use('/modified_html', express.static(modifiedHtmlDir));
 
 // Use routes
 const reportRoutes = require('./routes/reportRoutes');
