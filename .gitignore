@@ -1,6 +1,4 @@
 /node_modules
-/reports
-modified_html
 servicekey.json
 firebase.js
-frontend
+
