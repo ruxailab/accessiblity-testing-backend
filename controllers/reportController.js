@@ -55,6 +55,12 @@ exports.runAccessibilityTest = async (req, res) => {
         res.json({
             success: true,
             message: 'Accessibility test completed and report saved',
+            ReportId: testId,
+            ReportUrl: url,
+            ReportDateTime: new Date().toISOString(),
+            ReportIssues: results.issues,
+            ReportIssueCount: results.issues.length,
+            DocumentTitle: results.documentTitle
         });
     } catch (error) {
         // Handle errors and send error response

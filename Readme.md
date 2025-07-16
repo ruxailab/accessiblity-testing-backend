@@ -29,6 +29,8 @@ npm install
 
 1.  **Firebase Setup:**
 
+    *   Go to firebase projects, create a new project or select an existing one then project settings.
+    *   sevice accounts > create service account >` Generate new private key`.
     *   Create a Firebase project and generate a service account key (`servicekey.json`).
     *   Place `servicekey.json` in the project root.
 

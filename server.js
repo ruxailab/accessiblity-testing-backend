@@ -4,6 +4,10 @@
 const express = require('express');
 const cors = require('cors');
 const admin = require('firebase-admin');
+const { swaggerUi, swaggerDocument } = require('./swagger');
+
+
+
 let firebaseConfig;
 
 if (process.env.GOOGLE_APPLICATION_CREDENTIALS) {
@@ -26,6 +30,9 @@ const port = process.env.PORT || 3000;
 app.use(cors());
 app.use(express.json());
 app.use(express.static('public'));
+
+// Swagger UI
+app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerDocument));
 
 
 // Use routes
