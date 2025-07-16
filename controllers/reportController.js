@@ -3,8 +3,10 @@
 
 const pa11y = require('pa11y');
 const FirebaseReport = require('../models/firebaseReport');
+
 const { addReport, findReportByTestId, updateReport } = require('../utils/firebaseService');
 const { fetchFullWebpage, fetchAllCss, generateModifiedHtml } = require('../utils/reportUtils');
+const pa11yConfig = require('../config/pa11yConfig');
 
 
 
@@ -27,11 +29,11 @@ exports.runAccessibilityTest = async (req, res) => {
         // Run Pa11y accessibility test on the provided URL
         console.log('[runAccessibilityTest] Running Pa11y accessibility test...');
         const results = await pa11y(url, {
-            standard: 'WCAG2AA',
-            includeNotices: true,
-            includeWarnings: true,
-            timeout: 50000,
-            wait: 1000,
+            standard: pa11yConfig.standard,
+            includeNotices: pa11yConfig.includeNotices,
+            includeWarnings: pa11yConfig.includeWarnings,
+            timeout: pa11yConfig.timeout,
+            wait: pa11yConfig.wait,
         });
         console.log(`[runAccessibilityTest] Pa11y test completed. Issues found: ${results.issues.length}`);
 
