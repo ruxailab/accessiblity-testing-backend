@@ -17,7 +17,11 @@ exports.runAccessibilityTest = async (req, res) => {
         console.log(`[runAccessibilityTest] Received request for URL: ${url}, testId: ${testId}`);
         if (!url) {
             console.error('[runAccessibilityTest] No URL provided');
-            return res.status(400).json({ error: 'URL is required' });
+            return res.status(400).json({
+                success: false,
+                message: 'URL is required',
+                details: null
+            });
         }
 
         // Run Pa11y accessibility test on the provided URL
@@ -30,8 +34,6 @@ exports.runAccessibilityTest = async (req, res) => {
             wait: 1000,
         });
         console.log(`[runAccessibilityTest] Pa11y test completed. Issues found: ${results.issues.length}`);
-
-        
 
         // Prepare and save the report using the model and service
         const firebaseReport = new FirebaseReport({
@@ -49,19 +51,15 @@ exports.runAccessibilityTest = async (req, res) => {
         // Respond with summary and modified HTML (not saved locally)
         console.log('[runAccessibilityTest] Sending response to client.');
         res.json({
-            testId,
-            summary: {
-                total: results.issues.length,
-                errors: results.issues.filter(issue => issue.type === 'error').length,
-                warnings: results.issues.filter(issue => issue.type === 'warning').length,
-                notices: results.issues.filter(issue => issue.type === 'notice').length
-            },
+            success: true,
+            message: 'Accessibility test completed and report saved',
         });
     } catch (error) {
         // Handle errors and send error response
         console.error('[runAccessibilityTest] Error:', error.message);
         res.status(500).json({
-            error: 'Failed to run accessibility test',
+            success: false,
+            message: 'Failed to run accessibility test',
             details: error.message
         });
     }
@@ -73,29 +71,43 @@ exports.generateModifiedHtmlForTest = async (req, res) => {
     try {
         const { testId } = req.body;
         if (!testId) {
-            return res.status(400).json({ error: 'testId is required' });
+            return res.status(400).json({
+                success: false,
+                message: 'testId is required',
+                details: null
+            });
         }
         console.log(`[generateModifiedHtmlForTest] Searching for Firestore document with testId: ${testId}`);
-
-
 
         // Search for the document with the given testId using the service
         const found = await findReportByTestId(testId);
         if (!found) {
             console.error('[generateModifiedHtmlForTest] No report found for testId:', testId);
-            return res.status(404).json({ error: 'No report found for the given testId' });
+            return res.status(404).json({
+                success: false,
+                message: 'No report found for the given testId',
+                details: null
+            });
         }
         const { doc, data: reportData } = found;
         const url = reportData.ReportUrl;
         if (!url) {
-            return res.status(400).json({ error: 'No URL found in the report for this testId' });
+            return res.status(400).json({
+                success: false,
+                message: 'No URL found in the report for this testId',
+                details: null
+            });
         }
         console.log(`[generateModifiedHtmlForTest] Fetching and generating modified HTML for URL: ${url}`);
 
         // Fetch the fully rendered HTML and stylesheets
         const { html, stylesheets } = await fetchFullWebpage(url);
         if (!html) {
-            return res.status(500).json({ error: 'Failed to fetch webpage' });
+            return res.status(500).json({
+                success: false,
+                message: 'Failed to fetch webpage',
+                details: null
+            });
         }
 
         // Download all external CSS referenced by the page
@@ -117,7 +129,8 @@ exports.generateModifiedHtmlForTest = async (req, res) => {
     } catch (error) {
         console.error('[generateModifiedHtmlForTest] Error:', error.message);
         res.status(500).json({
-            error: 'Failed to generate and update modifiedHtml',
+            success: false,
+            message: 'Failed to generate and update modifiedHtml',
             details: error.message
         });
     }
