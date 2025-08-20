@@ -56,7 +56,7 @@ docker build -t rx11y-backend .
 ### Run the Docker container locally (with service account key)
 
 ```bash
-docker run -p 5000:5000 -v $(pwd)/servicekey.json:/app/servicekey.json rx11y-backend
+docker run -p 8080:8080 rx11y-backend
 ```
 
 ---
