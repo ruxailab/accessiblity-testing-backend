@@ -8,23 +8,13 @@ const { swaggerUi, swaggerDocument } = require('./swagger');
 
 
 
-let firebaseConfig;
-
-if (process.env.GOOGLE_APPLICATION_CREDENTIALS) {
-    // Running in GCP or with env var set: use application default
-    admin.initializeApp({
-        credential: admin.credential.applicationDefault(),
-    });
-} else {
-    // Running locally: use service account key
-    const serviceAccount = require('./servicekey.json');
-    admin.initializeApp({
-        credential: admin.credential.cert(serviceAccount),
-    });
-}
+// Initialize Firebase Admin with Application Default Credentials
+admin.initializeApp({
+    credential: admin.credential.applicationDefault(),
+});
 
 const app = express();
-const port = process.env.PORT || 3000;
+const port = process.env.PORT || 8080;
 
 // Middleware
 app.use(cors());
