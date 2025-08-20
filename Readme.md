@@ -41,7 +41,7 @@ npm install
     # or
     npm start
     ```
-    The server will run on `http://localhost:3000` by default.
+    The server will run on `http://localhost:8080` by default.
 
 ---
 

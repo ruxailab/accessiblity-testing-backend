@@ -1,13 +1,12 @@
-# Use the official Node.js image
-
-FROM node:20-slim
+# Use Puppeteer's official image which includes Chrome and all dependencies
+FROM ghcr.io/puppeteer/puppeteer:22.0.0
 
 # Set working directory
 WORKDIR /app
 
 # Copy package.json and install dependencies
 COPY package*.json ./
-RUN npm install --production
+RUN npm ci --only=production && npm cache clean --force
 
 # Copy source files (excluding files in .dockerignore)
 COPY . .

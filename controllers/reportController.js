@@ -34,6 +34,7 @@ exports.runAccessibilityTest = async (req, res) => {
             includeWarnings: pa11yConfig.includeWarnings,
             timeout: pa11yConfig.timeout,
             wait: pa11yConfig.wait,
+            chromeLaunchConfig: pa11yConfig.chromeLaunchConfig
         });
         console.log(`[runAccessibilityTest] Pa11y test completed. Issues found: ${results.issues.length}`);
 

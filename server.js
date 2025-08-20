@@ -31,5 +31,5 @@ app.use('/api', reportRoutes);
 
 // Start server
 app.listen(port, () => {
-    console.log(`Accessibility testing server running `);
+    console.log(`Accessibility testing server running `,port);
 });

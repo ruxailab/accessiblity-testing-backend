@@ -11,7 +11,11 @@ async function fetchFullWebpage(url) {
     try {
         browser = await puppeteer.launch({
             headless: 'new',
-            args: ['--no-sandbox', '--disable-setuid-sandbox']
+            args: [
+                '--no-sandbox',
+                '--disable-setuid-sandbox',
+                '--disable-dev-shm-usage'
+            ]
         });
         const page = await browser.newPage();
         await page.setViewport({ width: 1366, height: 768 });
@@ -38,7 +42,11 @@ async function takeScreenshot(url, screenshotPath) {
     try {
         browser = await puppeteer.launch({
             headless: 'new',
-            args: ['--no-sandbox', '--disable-setuid-sandbox']
+            args: [
+                '--no-sandbox',
+                '--disable-setuid-sandbox',
+                '--disable-dev-shm-usage'
+            ]
         });
         const page = await browser.newPage();
         await page.setViewport({ width: 1366, height: 768 });
