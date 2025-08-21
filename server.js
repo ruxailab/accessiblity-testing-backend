@@ -9,17 +9,16 @@ const { swaggerUi, swaggerDocument } = require('./swagger');
 
 // strictly for local development uncomment this section bellow
 
-const serviceAccount = require('./servicekey.json');
-admin.initializeApp({
-    credential: admin.credential.cert(serviceAccount),
-});
-
+// const serviceAccount = require('./servicekey.json');
+// admin.initializeApp({
+//     credential: admin.credential.cert(serviceAccount),
+// });
 
 // for production purpose
 // Initialize Firebase Admin with Application Default Credentials
-// admin.initializeApp({
-//     credential: admin.credential.applicationDefault(),
-// });
+admin.initializeApp({
+    credential: admin.credential.applicationDefault(),
+});
 
 const app = express();
 const port = process.env.PORT || 8080;
