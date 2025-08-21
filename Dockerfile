@@ -1,5 +1,5 @@
 # Use Puppeteer's official image which includes Chrome and all dependencies
-FROM ghcr.io/puppeteer/puppeteer:23.10.4
+FROM ghcr.io/puppeteer/puppeteer:22.15.0
 
 # Switch to root user to fix permissions
 USER root
@@ -9,7 +9,7 @@ WORKDIR /app
 
 # Copy package.json and install dependencies
 COPY package*.json ./
-RUN npm ci --only=production && npm cache clean --force
+RUN npm install --only=production && npm cache clean --force
 
 # Set environment variables for Puppeteer
 ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true

@@ -18,7 +18,7 @@
     "firebase-admin": "^13.4.0",
     "js-yaml": "^4.1.0",
     "pa11y": "^8.0.0",
-    "puppeteer": "^23.10.4",
+    "puppeteer": "^22.15.0",
     "swagger-jsdoc": "^6.2.8",
     "swagger-ui-express": "^5.0.1",
     "uuid": "^9.0.0"
