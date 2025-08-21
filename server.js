@@ -7,11 +7,19 @@ const admin = require('firebase-admin');
 const { swaggerUi, swaggerDocument } = require('./swagger');
 
 
+// strictly for local development uncomment this section bellow
 
-// Initialize Firebase Admin with Application Default Credentials
+const serviceAccount = require('./servicekey.json');
 admin.initializeApp({
-    credential: admin.credential.applicationDefault(),
+    credential: admin.credential.cert(serviceAccount),
 });
+
+
+// for production purpose
+// Initialize Firebase Admin with Application Default Credentials
+// admin.initializeApp({
+//     credential: admin.credential.applicationDefault(),
+// });
 
 const app = express();
 const port = process.env.PORT || 8080;
@@ -31,5 +39,5 @@ app.use('/api', reportRoutes);
 
 // Start server
 app.listen(port, () => {
-    console.log(`Accessibility testing server running `,port);
+    console.log(`Accessibility testing server running `, port);
 });
