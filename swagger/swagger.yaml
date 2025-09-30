@@ -1,15 +1,15 @@
 openapi: 3.0.0
 info:
   title: RUXAILAB Accessibility API
-  version: 1.0.0
-  description: API documentation for accessibility testing endpoints
+  version: 2.0.0
+  description: Fast accessibility testing API without database dependencies
 
 paths:
-  /api/test:
+  /api/v2/test:
     post:
-      summary: Run accessibility test
+      summary: Run flash accessibility test
       description: |
-        Runs an accessibility test on a given URL and stores the result in Firebase Firestore.
+        Runs an accessibility test on a given URL and returns the results immediately without storing in Firebase Firestore.
       requestBody:
         required: true
         content:
@@ -18,20 +18,15 @@ paths:
               type: object
               required:
                 - url
-                - testId
               properties:
                 url:
                   type: string
                   format: uri
                   description: The URL of the webpage to test
                   example: "https://www.example.com"
-                testId:
-                  type: string
-                  description: Unique test identifier to associate the report
-                  example: "test_001"
       responses:
         200:
-          description: Accessibility test completed and report saved
+          description: Flash accessibility test completed
           content:
             application/json:
               schema:
@@ -42,69 +37,28 @@ paths:
                     example: true
                   message:
                     type: string
-                    example: Accessibility test completed and report saved
-                  ReportId:
-                    type: string
-                    example: test_001
-                  ReportUrl:
+                    example: Flash accessibility test completed
+                  url:
                     type: string
                     example: "https://example.com"
-                  ReportDateTime:
+                  testDateTime:
                     type: string
                     format: date-time
-                  ReportIssues:
+                    description: When the test was performed
+                  issues:
                     type: array
                     items:
                       type: object
-                  ReportIssueCount:
+                      description: Accessibility issues found
+                  issueCount:
                     type: integer
-                  DocumentTitle:
+                    description: Total number of issues found
+                    example: 5
+                  documentTitle:
                     type: string
+                    description: Title of the tested webpage
+                    example: "Example Page Title"
         400:
           description: Missing URL in request
-        500:
-          description: Internal server error
-
-  /api/test/generate:
-    post:
-      summary: Generate and update modified HTML for test
-      description: |
-        Fetches the saved accessibility issues for a test, downloads the webpage, highlights issues in HTML, and saves the updated HTML to Firestore.
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              required:
-                - testId
-              properties:
-                testId:
-                  type: string
-                  description: The ID of the test report to modify
-                  example: "test_001"
-      responses:
-        200:
-          description: Modified HTML generated and saved
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  success:
-                    type: boolean
-                    example: true
-                  message:
-                    type: string
-                    example: modifiedHtml generated and updated successfully
-                  testId:
-                    type: string
-                  modifiedHtml:
-                    type: string
-                    description: The updated HTML string with accessibility highlights
-        400:
-          description: Missing or invalid testId
-        404:
-          description: Report not found
         500:
           description: Internal server error

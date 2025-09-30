@@ -1,27 +1,10 @@
-// express js server file to llm to get context of how the backend works
-//pusing 
-// server.js - Main Express server file
+// server.js - Main Express server file for accessibility testing
 const express = require('express');
 const cors = require('cors');
-const admin = require('firebase-admin');
 const { swaggerUi, swaggerDocument } = require('./swagger');
 
-
-// strictly for local development uncomment this section bellow
-
-// const serviceAccount = require('./servicekey.json');
-// admin.initializeApp({
-//     credential: admin.credential.cert(serviceAccount),
-// });
-
-// for production purpose
-// Initialize Firebase Admin with Application Default Credentials
-admin.initializeApp({
-    credential: admin.credential.applicationDefault(),
-});
-
 const app = express();
-const port = process.env.PORT || 4000;
+const port = process.env.PORT || 4321;
 
 // Middleware
 app.use(cors());

@@ -3,13 +3,7 @@ const express = require('express');
 const router = express.Router();
 const reportController = require('../controllers/reportController');
 
-
-
-// Run accessibility test -- frequently used
-router.post('/test', reportController.runAccessibilityTest);
-
-// New endpoint to generate and update modifiedHtml for a test by testId
-router.post('/test/generate', reportController.generateModifiedHtmlForTest);
-
+// Flash accessibility test - no Firebase storage
+router.post('/v2/test', reportController.runAccessibilityTestFlash);
 
 module.exports = router;
