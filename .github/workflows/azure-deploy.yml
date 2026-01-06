@@ -47,8 +47,15 @@ jobs:
       with:
         creds: ${{ secrets.AZURE_CREDENTIALS }}
 
-    - name: Deploy to Azure Web App
-      uses: azure/webapps-deploy@v2
-      with:
-        app-name: ${{ env.AZURE_WEBAPP_NAME }}
-        images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.sha }}
+    - name: Configure Azure Web App for GHCR
+      run: |
+        az webapp config container set \
+          --name ${{ env.AZURE_WEBAPP_NAME }} \
+          --resource-group arctools_group \
+          --container-image-name ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.sha }} \
+          --container-registry-url https://${{ env.REGISTRY }} \
+          --container-registry-user ${{ github.actor }} \
+          --container-registry-password ${{ secrets.GHCR_PAT }}
+
+    - name: Restart Web App
+      run: az webapp restart --name ${{ env.AZURE_WEBAPP_NAME }} --resource-group arctools_group
