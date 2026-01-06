@@ -1,15 +1,139 @@
 openapi: 3.0.0
 info:
   title: RUXAILAB Accessibility API
-  version: 2.0.0
-  description: Fast accessibility testing API without database dependencies
+  version: 3.0.0
+  description: Production-grade accessibility testing API with visual snapshots and comprehensive issue reporting
 
 paths:
+  /api/v3/test:
+    post:
+      summary: Run comprehensive accessibility test with visual snapshot
+      description: |
+        Runs a full accessibility audit on a given URL using Puppeteer and pa11y (axe-core).
+        Returns:
+        - Static HTML snapshot of the page
+        - Accessibility issues with visual location metadata (bounding boxes)
+        - Summary statistics by impact level
+        
+        The API renders the page in a real browser, captures a sanitized snapshot,
+        and maps each accessibility issue to its visual position on the page.
+      tags:
+        - Accessibility Testing
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - url
+              properties:
+                url:
+                  type: string
+                  format: uri
+                  description: The URL of the webpage to test (must be http or https)
+                  example: "https://www.example.com"
+      responses:
+        200:
+          description: Accessibility test completed successfully
+          headers:
+            x-correlation-id:
+              schema:
+                type: string
+              description: Correlation ID for request tracking
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/V3TestResponse'
+        400:
+          description: Invalid URL provided
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                invalidUrl:
+                  summary: Invalid URL format
+                  value:
+                    error:
+                      code: "INVALID_URL"
+                      message: "URL must use http or https protocol"
+        502:
+          description: Failed to load the target page
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                timeout:
+                  summary: Page load timeout
+                  value:
+                    error:
+                      code: "PAGE_LOAD_TIMEOUT"
+                      message: "The page did not load within 30 seconds"
+                loadFailed:
+                  summary: Page load failed
+                  value:
+                    error:
+                      code: "PAGE_LOAD_FAILED"
+                      message: "Failed to load the page. Please check the URL is accessible."
+        500:
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                browserFailure:
+                  summary: Browser initialization failed
+                  value:
+                    error:
+                      code: "BROWSER_FAILURE"
+                      message: "Browser initialization failed. Please try again."
+                auditFailed:
+                  summary: Accessibility audit failed
+                  value:
+                    error:
+                      code: "AUDIT_FAILED"
+                      message: "Accessibility audit failed. Please try again."
+                internalError:
+                  summary: Unexpected error
+                  value:
+                    error:
+                      code: "INTERNAL_ERROR"
+                      message: "An unexpected error occurred. Please try again."
+
+  /api/v3/health:
+    get:
+      summary: Health check endpoint
+      description: Returns the health status of the V3 API
+      tags:
+        - Health
+      responses:
+        200:
+          description: Service is healthy
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: "healthy"
+                  version:
+                    type: string
+                    example: "3.0.0"
+                  timestamp:
+                    type: string
+                    format: date-time
+
   /api/v2/test:
     post:
-      summary: Run flash accessibility test
+      summary: Run flash accessibility test (Legacy)
       description: |
-        Runs an accessibility test on a given URL and returns the results immediately without storing in Firebase Firestore.
+        Legacy endpoint. Runs an accessibility test on a given URL and returns the results immediately without storing in Firebase Firestore.
+      tags:
+        - Legacy
       requestBody:
         required: true
         content:
@@ -62,3 +186,175 @@ paths:
           description: Missing URL in request
         500:
           description: Internal server error
+
+components:
+  schemas:
+    V3TestResponse:
+      type: object
+      properties:
+        meta:
+          type: object
+          properties:
+            url:
+              type: string
+              description: The URL that was tested
+              example: "https://example.com"
+            scanTime:
+              type: string
+              format: date-time
+              description: ISO timestamp of when the scan was performed
+              example: "2026-01-06T10:30:12Z"
+            duration:
+              type: integer
+              description: Total scan duration in milliseconds
+              example: 5432
+            engine:
+              type: object
+              properties:
+                accessibility:
+                  type: string
+                  example: "pa11y (axe-core)"
+                browser:
+                  type: string
+                  example: "puppeteer"
+            viewport:
+              type: object
+              properties:
+                width:
+                  type: integer
+                  example: 1366
+                height:
+                  type: integer
+                  example: 768
+        snapshot:
+          type: object
+          properties:
+            html:
+              type: string
+              description: Sanitized HTML snapshot of the page
+              example: "<!DOCTYPE html>...</html>"
+            scrollHeight:
+              type: integer
+              description: Total scroll height of the page in pixels
+              example: 4200
+            note:
+              type: string
+              description: Information about the snapshot
+              example: "Static visual snapshot captured at scan time. JavaScript disabled."
+        issues:
+          type: array
+          items:
+            $ref: '#/components/schemas/AccessibilityIssue'
+        summary:
+          type: object
+          properties:
+            total:
+              type: integer
+              description: Total number of issues found
+              example: 23
+            critical:
+              type: integer
+              description: Number of critical issues
+              example: 6
+            serious:
+              type: integer
+              description: Number of serious issues
+              example: 9
+            moderate:
+              type: integer
+              description: Number of moderate issues
+              example: 8
+            minor:
+              type: integer
+              description: Number of minor issues
+              example: 0
+            visualizable:
+              type: integer
+              description: Number of issues that can be visually highlighted
+              example: 18
+            nonVisual:
+              type: integer
+              description: Number of issues without visual location
+              example: 5
+
+    AccessibilityIssue:
+      type: object
+      properties:
+        id:
+          type: string
+          description: Unique issue identifier
+          example: "a11y-001"
+        rule:
+          type: string
+          description: Accessibility rule code
+          example: "image-alt"
+        message:
+          type: string
+          description: Human-readable description of the issue
+          example: "Image elements must have alternate text"
+        impact:
+          type: string
+          enum: [critical, serious, moderate, minor]
+          description: Severity level of the issue
+          example: "critical"
+        wcag:
+          type: string
+          nullable: true
+          description: WCAG success criterion reference
+          example: "1.1.1"
+        selector:
+          type: string
+          nullable: true
+          description: CSS selector for the element
+          example: "img.logo"
+        xpath:
+          type: string
+          nullable: true
+          description: XPath to the element
+          example: "/html/body/header/img[1]"
+        context:
+          type: string
+          nullable: true
+          description: HTML snippet of the problematic element
+          example: "<img src=\"logo.png\" class=\"logo\">"
+        boundingBox:
+          type: object
+          nullable: true
+          description: Visual position of the element on the page
+          properties:
+            x:
+              type: integer
+              description: X coordinate in pixels
+              example: 120
+            y:
+              type: integer
+              description: Y coordinate in pixels
+              example: 340
+            width:
+              type: integer
+              description: Element width in pixels
+              example: 220
+            height:
+              type: integer
+              description: Element height in pixels
+              example: 48
+        visualizable:
+          type: boolean
+          description: Whether the issue can be visually highlighted
+          example: true
+
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: object
+          properties:
+            code:
+              type: string
+              description: Error code
+              enum: [INVALID_URL, PAGE_LOAD_TIMEOUT, PAGE_LOAD_FAILED, BROWSER_FAILURE, AUDIT_FAILED, INTERNAL_ERROR]
+              example: "PAGE_LOAD_TIMEOUT"
+            message:
+              type: string
+              description: Human-readable error message
+              example: "The page did not load within 30 seconds"

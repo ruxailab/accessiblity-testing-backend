@@ -9,13 +9,17 @@
     "test:puppeteer": "node test-puppeteer.js"
   },
   "dependencies": {
+    "cheerio": "^1.1.2",
     "cors": "^2.8.5",
     "dotenv": "^16.5.0",
     "express": "^4.18.2",
     "js-yaml": "^4.1.0",
     "pa11y": "^8.0.0",
+    "pino": "^10.1.0",
+    "puppeteer": "^24.34.0",
     "swagger-jsdoc": "^6.2.8",
-    "swagger-ui-express": "^5.0.1"
+    "swagger-ui-express": "^5.0.1",
+    "uuid": "^13.0.0"
   },
   "devDependencies": {
     "nodemon": "^3.1.9"

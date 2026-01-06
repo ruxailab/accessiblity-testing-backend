@@ -15,6 +15,12 @@ RUN npm install --only=production && npm cache clean --force
 ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true
 ENV PUPPETEER_EXECUTABLE_PATH=/usr/bin/google-chrome-stable
 
+# Set Node environment
+ENV NODE_ENV=production
+
+# Configure logging (optional: set to 'debug' for troubleshooting)
+ENV LOG_LEVEL=info
+
 # Copy source files (excluding files in .dockerignore)
 COPY . .
 
